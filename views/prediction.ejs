@@ -1,0 +1,16 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="UTF-8">
+    <title>Betting Predictions</title>
+    <link rel="stylesheet" href="/css/style.css">
+  </head>
+  <body>
+    <h1>Betting Predictions</h1>
+    <ul>
+      <% predictions.forEach(function(prediction) { %>
+        <li><%= prediction.match %>: <%= prediction.prediction %> (Odds: <%= prediction.odds %>)</li>
+      <% }); %>
+    </ul>
+  </body>
+</html>
