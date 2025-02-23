@@ -3,32 +3,28 @@ const express = require('express');
 const cors = require('cors');
 const path = require('path');
 const admin = require('firebase-admin');
+const fs = require('fs');
 
-// Firebase service account configuration
-const serviceAccount = {
-  type: "service_account",
-  project_id: process.env.FIREBASE_PROJECT_ID,
-  private_key_id: process.env.FIREBASE_PRIVATE_KEY_ID,
-  private_key: process.env.FIREBASE_PRIVATE_KEY.replace(/\\n/g, '\n'),
-  client_email: process.env.FIREBASE_CLIENT_EMAIL,
-  client_id: process.env.FIREBASE_CLIENT_ID,
-  auth_uri: process.env.FIREBASE_AUTH_URI,
-  token_uri: process.env.FIREBASE_TOKEN_URI,
-  auth_provider_x509_cert_url: process.env.FIREBASE_AUTH_PROVIDER_X509_CERT_URL,
-  client_x509_cert_url: process.env.FIREBASE_CLIENT_X509_CERT_URL,
-};
+// Read service account from JSON
+const serviceAccountPath = path.join(__dirname, 'service-account.json');
+let serviceAccount;
+if (fs.existsSync(serviceAccountPath)) {
+    serviceAccount = require(serviceAccountPath);
+} else {
+    console.error('Service account file not found!');
+    process.exit(1);
+}
 
+// Initialize Firebase
 admin.initializeApp({
-  credential: admin.credential.cert(serviceAccount),
-  databaseURL: process.env.FIREBASE_DATABASE_URL,
+    credential: admin.credential.cert(serviceAccount),
+    databaseURL: process.env.FIREBASE_DATABASE_URL || "https://peron-tips-ltd.firebaseio.com"
 });
 
-const predictionController = require('./controllers/predictionController');
-const paymentController = require('./controllers/paymentController'); // if needed
-const authMiddleware = require('./middleware/authMiddleware');
-const authRoutes = require('./routes/userRoutes'); // user auth routes here
+const authRoutes = require('./routes/userRoutes'); 
 const predictionRoutes = require('./routes/predictionRoutes');
 const notificationRoutes = require('./routes/notificationRoutes');
+const paymentRoutes = require('./routes/paymentRoutes'); // Add Payment Routes
 
 const app = express();
 
@@ -41,33 +37,17 @@ app.use(express.static(path.join(__dirname, 'static')));
 app.use('/auth', authRoutes);
 app.use('/predictions', predictionRoutes);
 app.use('/notifications', notificationRoutes);
-
-// Example route for betting predictions payment (20 Ksh)
-app.post('/betting/predictions/payment', async (req, res) => {
-  const { phoneNumber, amount } = req.body;
-  // Here you can call your payment controller logic
-  try {
-    const paymentResult = await paymentController.initiatePayment(
-      phoneNumber,
-      amount,
-      process.env.MPESA_STK_PUSH_URL
-    );
-    res.json(paymentResult);
-  } catch (error) {
-    console.error('Payment error:', error);
-    res.status(500).json({ error: 'Payment processing error' });
-  }
-});
+app.use('/payment', paymentRoutes); // This ensures payment routes are handled
 
 // Default Route
 app.get('/', (req, res) => {
-  res.render('home'); // Using EJS view engine, for example
+    res.send('SangPoint Backend Running');
 });
 
 // Error handling middleware
 app.use((err, req, res, next) => {
-  console.error(err.stack);
-  res.status(500).json({ error: 'Something went wrong!' });
+    console.error(err.stack);
+    res.status(500).json({ error: 'Something went wrong!' });
 });
 
 const PORT = process.env.PORT || 5000;
